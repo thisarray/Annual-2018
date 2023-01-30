@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babbage vs Bugs</title>
+  <script src="../../jsgame0.js"></script>
+  <style type="text/css" media="screen">
+@font-face {
+  font-family: 'consola';
+  src: url('fonts/consola.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+body {
+  background-color: white;
+  color: black;
+}
+.hidden {
+  display: none;
+}
+#original {
+  margin-left: 1em;
+}
+  </style>
+</head>
+
+<body>
+<section id="imageLoader" class="hidden">
+  <img class="hidden" src="images/bab0.png" alt="bab0" data-name="bab0">
+  <img class="hidden" src="images/bab1.png" alt="bab1" data-name="bab1">
+  <img class="hidden" src="images/babs.png" alt="babs" data-name="babs">
+  <img class="hidden" src="images/beam.png" alt="beam" data-name="beam">
+  <img class="hidden" src="images/blank.png" alt="blank" data-name="blank">
+  <img class="hidden" src="images/bug10.png" alt="bug10" data-name="bug10">
+  <img class="hidden" src="images/bug11.png" alt="bug11" data-name="bug11">
+  <img class="hidden" src="images/bug12.png" alt="bug12" data-name="bug12">
+  <img class="hidden" src="images/bug13.png" alt="bug13" data-name="bug13">
+  <img class="hidden" src="images/bug20.png" alt="bug20" data-name="bug20">
+  <img class="hidden" src="images/bug21.png" alt="bug21" data-name="bug21">
+  <img class="hidden" src="images/bug22.png" alt="bug22" data-name="bug22">
+  <img class="hidden" src="images/bug23.png" alt="bug23" data-name="bug23">
+  <img class="hidden" src="images/bugs0.png" alt="bugs0" data-name="bugs0">
+  <img class="hidden" src="images/bugs1.png" alt="bugs1" data-name="bugs1">
+  <img class="hidden" src="images/bugs2.png" alt="bugs2" data-name="bugs2">
+  <img class="hidden" src="images/bugs3.png" alt="bugs3" data-name="bugs3">
+  <img class="hidden" src="images/dark.png" alt="dark" data-name="dark">
+  <img class="hidden" src="images/life.png" alt="life" data-name="life">
+  <img class="hidden" src="images/star.png" alt="star" data-name="star">
+</section>
+
+<main>
+<h1>Babbage vs Bugs</h1>
+
+<canvas id="screen">
+The game screen appears here if your browser supports the Canvas API.
+</canvas>
+<section id="controls">
+  <button type="button" id="reset">Reset</button>
+  <button type="button" id="pause">Pause</button>
+</section>
+
+<h2>Attribution</h2>
+
+<p><a href="https://magpi.raspberrypi.com/books/annual-2018">The Raspberry Pi Annual 2018 - code our exciting Space Invaders clone, pages 42 - 45, by Eben Upton, Laurence van Someren, Sam Alder</a>.</p>
+
+<p>Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode">Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported</a>.</p>
+
+<h2>Original Python code</h2>
+
+<pre id="original"><code>
+from random import randint as rand
+
+WIDTH = W = 640
+HEIGHT = H = 480
+TITLE = &quot;Babbage vs Bugs&quot;
+
+P = [(0,1,240), (-1,0,112), (0,1,32), (1,0,224), (0,1,32), (-1,0,224)]
+F = [lambda x, y : 0,
+	 lambda x, y : y&lt;1,
+	 lambda x, y : y==1,
+	 lambda x, y : y&gt;1,
+	 lambda x, y : x&amp;1,
+	 lambda x, y : (x^y)&amp;1,
+	 lambda x, y : 1]
+
+class Bug(Actor):
+	def __init__(s, pos, kind):
+		super().__init__(&quot;blank&quot;, pos)
+
+		s.kind = kind
+		s.life = kind*2
+		s.time = 0
+
+	def update(s):
+		s.time -= 1
+		s.x += P[state.pc0][0]
+		s.y += P[state.pc0][1]
+
+		c = s.collidelist(state.beams[0])
+		if c &gt;= 0:
+			state.beams[0][c].h = 1
+
+			s.life -= 1
+			if s.life == 0:
+				state.score += s.kind*10
+
+			s.time = 5
+
+		if rand(0, 399) == 0:
+			state.beams[1].append(Beam(s.pos, 3))
+
+		s.image=&quot;bug&quot;+(&quot;s&quot; if s.time&gt;0 else str(s.kind))+str(state.pc1&gt;&gt;3&amp;3)
+
+class Star(Actor):
+	def __init__(s):
+		super().__init__(&quot;star&quot;, (rand(0, W-1), rand(0, H-1)))
+
+		s.v = rand(1, 3)
+
+	def update(s):
+		s.y -= s.v
+
+		if s.y &lt; 0:
+			s.x = rand(0, W-1)
+			s.y += H
+
+class Beam(Actor):
+	def __init__(s, pos, v):
+		super().__init__(&quot;beam&quot;, pos)
+
+		s.v = v
+		s.h = 0
+
+	def update(s):
+		s.y += s.v
+
+class Player(Actor):
+	def __init__(s):
+		super().__init__(&quot;blank&quot;, (W/2, H-64))
+
+		s.time0 = 0
+		s.time1 = 0
+		s.life = 5
+
+	def update(s):
+		s.time0 -= 1
+		s.time1 -= 1
+
+		dx = (3 if keyboard.right else 0)-(3 if keyboard.left else 0)
+
+		s.x = max(32, min(W-32, s.x+dx))
+
+		c = s.collidelist(state.beams[1])
+		if c &gt;= 0 and s.time0 &lt; 0:
+			state.beams[1][c].h = 1
+
+			s.life -= 1
+			s.time0 = 5
+
+		if keyboard.space and s.time1 &lt; 0:
+			state.beams[0].append(Beam(s.pos, -5))
+			s.time1 = 15
+
+		s.image = &quot;bab&quot;+(&quot;s&quot; if s.life &gt; 0 and s.time0 &gt; 0 else str(state.pc1&gt;&gt;4&amp;1))
+
+class State:
+	def __init__(s):
+		s.bugs = []
+		s.beams = ([], [])
+		s.stars = [Star() for s in range(30)]
+
+		s.player = Player()
+
+		s.score = 0
+		s.space = 0
+
+		s.wave = 0
+
+	def update(s):
+		if len(s.bugs) == 0:
+			for y in range(3):
+				for x in range(7):
+					s.bugs.append(Bug((W/2+x*60-180, y*60-180), 2 if F[min(s.wave, 6)](x, y) else 1))
+
+			s.pc0 = 0
+			s.pc1 = 0
+			s.wave += 1
+
+		for a in s.all():
+			a.update()
+
+		s.bugs = [b for b in s.bugs if b.life &gt; 0]
+
+		s.beams = ([b for b in s.beams[0] if b.y &gt; -64 and not b.h],
+				   [b for b in s.beams[1] if b.y &lt; H+64 and not b.h])
+
+		s.pc1 += 1
+		if s.pc1 == P[s.pc0][2]:
+			s.pc0 = 2 if s.pc0==5 else s.pc0+1
+			s.pc1 = 0
+
+	def all(s):
+		return s.stars+s.beams[0]+s.beams[1]+s.bugs+[s.player]
+
+	def over(s):
+		return s.player.life &lt;= 0 or len(s.bugs) and max([b.y for b in s.bugs]) &gt; s.player.y - 50
+
+state = State()
+
+def update():
+	global state
+
+	if state.over():
+		if keyboard.space and not state.space:
+			state = State()
+	else:
+		state.update()
+
+	state.space = keyboard.space
+
+def draw():
+	screen.clear()
+
+	for a in state.all():
+		a.draw()
+
+	for i in range(state.player.life):
+		screen.blit(&quot;life&quot;, (6+i*32, H-26))
+
+	screen.draw.text(str(state.score), bottomright=(W-8, H-3), fontname=&quot;consola&quot;, fontsize=20)
+
+	if state.over():
+		screen.blit(&quot;dark&quot;, (0, 0))
+		screen.draw.text(&quot;GAME OVER&quot;, center=(W/2, H/2), fontname=&quot;consola&quot;, fontsize=100)
+</code></pre>
+</main>
+
+<script>
+WIDTH = 640;
+HEIGHT = 480;
+TITLE = "Babbage vs Bugs";
+
+/*
+ * Return a random integer N such that min <= N < max.
+ */
+function getRandomInteger(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor((Math.random() * (max - min)) + min);
+}
+
+const P = [[0, 1, 240], [-1, 0, 112], [0, 1, 32], [1, 0, 224], [0, 1, 32], [-1, 0, 224]];
+
+const F = [
+  (x, y) => 0,
+  (x, y) => y < 1,
+  (x, y) => y === 1,
+  (x, y) => y > 1,
+  (x, y) => x & 1,
+  (x, y) => (x ^ y) & 1,
+  (x, y) => 1
+];
+
+class Bug extends Actor {
+  constructor(pos, kind) {
+    super("blank");
+
+    this.pos = pos;
+
+    this.kind = kind;
+    this.life = kind * 2;
+    this.time = 0;
+  }
+
+  update() {
+    this.time -= 1;
+    this.posx += P[state.pc0][0];
+    this.posy += P[state.pc0][1];
+
+    let s = new Rect(this),
+        c = s.collidelist(state.beams[0]);
+    if (c >= 0) {
+      state.beams[0][c].h = 1;
+
+      this.life -= 1;
+      if (this.life === 0) {
+        state.score += this.kind * 10;
+      }
+
+      this.time = 5;
+    }
+
+    if (getRandomInteger(0, 400) === 0) {
+      state.beams[1].push(new Beam(this.pos, 3));
+    }
+
+    this.name = "bug" + (this.time > 0 ? "s" : this.kind.toFixed()) + ((state.pc1 >> 3) & 3).toFixed();
+  }
+}
+
+class Star extends Actor {
+  constructor() {
+    super("star");
+
+    this.pos = [getRandomInteger(0, WIDTH), getRandomInteger(0, HEIGHT)];
+
+    this.v = getRandomInteger(1, 4);
+  }
+
+  update() {
+    this.posy -= this.v;
+
+    if (this.posy < 0) {
+      this.posx = getRandomInteger(0, WIDTH);
+      this.posy += HEIGHT;
+    }
+  }
+}
+
+class Beam extends Actor {
+  constructor(pos, v) {
+    super("beam");
+
+    this.pos = pos;
+
+    this.v = v;
+    this.h = 0;
+  }
+
+  update() {
+    this.posy += this.v;
+  }
+}
+
+class Player extends Actor {
+  constructor() {
+    super("blank");
+
+    this.pos = [WIDTH / 2, HEIGHT - 64];
+
+    this.time0 = 0;
+    this.time1 = 0;
+    this.life = 5;
+  }
+
+  update() {
+    this.time0 -= 1;
+    this.time1 -= 1;
+
+    let dx, s, c;
+
+    dx = (keyboard[keys.RIGHT] ? 3 : 0) - (keyboard[keys.LEFT] ? 3 : 0);
+
+    this.posx = Math.max(32, Math.min(WIDTH - 32, this.posx + dx));
+
+    s = new Rect(this);
+    c = s.collidelist(state.beams[1]);
+    if ((c >= 0) && (this.time0 < 0)) {
+      state.beams[1][c].h = 1;
+
+      this.life -= 1;
+      this.time0 = 5;
+    }
+
+    if (keyboard[keys.SPACE] && (this.time1 < 0)) {
+      state.beams[0].push(new Beam(this.pos, -5));
+      this.time1 = 15;
+    }
+
+    this.name = "bab" + (((this.life > 0) && (this.time0 > 0)) ? "s" : ((state.pc1 >> 4) & 1).toFixed());
+  }
+}
+
+class State {
+  constructor() {
+    this.bugs = [];
+    this.beams = [[], []];
+    this.stars = [];
+    for (let s = 0; s < 30; s++) {
+      this.stars.push(new Star());
+    }
+
+    this.player = new Player();
+
+    this.score = 0;
+    this.space = false;
+
+    this.pc0 = 0;
+    this.pc1 = 0;
+    this.wave = 0;
+  }
+
+  update() {
+    if (this.bugs.length === 0) {
+      for (let y = 0; y < 3; y++) {
+        for (let x = 0; x < 7; x++) {
+          this.bugs.push(new Bug([(WIDTH / 2) + (x * 60) - 180, (y * 60) - 180], F[Math.min(this.wave, 6)](x, y) ? 2 : 1));
+        }
+      }
+
+      this.pc0 = 0;
+      this.pc1 = 0;
+      this.wave += 1;
+    }
+
+    for (let a of this.all()) {
+      a.update();
+    }
+
+    this.bugs = this.bugs.filter(b => b.life > 0);
+
+    this.beams = [this.beams[0].filter(b => (b.posy > -64) && (b.h === 0)),
+                  this.beams[1].filter(b => (b.posy < (HEIGHT + 64)) && (b.h === 0))];
+
+    this.pc1 += 1;
+    if (this.pc1 === P[this.pc0][2]) {
+      this.pc0 = (this.pc0 === 5) ? 2 : this.pc0 + 1;
+      this.pc1 = 0;
+    }
+  }
+
+  all() {
+    let result = this.stars.slice();
+    result = result.concat(this.beams[0]);
+    result = result.concat(this.beams[1]);
+    result = result.concat(this.bugs);
+    result.push(this.player);
+    return result;
+  }
+
+  over() {
+    return (this.player.life <= 0) || (this.bugs.length > 0) && (Math.max(...this.bugs.map(b => b.posy)) > (this.player.posy - 50));
+  }
+}
+
+var state;
+
+function reset() {
+  state = new State();
+}
+
+function update() {
+  if (state.over()) {
+    if (keyboard[keys.SPACE] && (!state.space)) {
+      state = new State();
+    }
+  }
+  else {
+    state.update();
+  }
+
+  state.space = keyboard[keys.SPACE];
+}
+
+function draw() {
+  screen.clear();
+
+  for (let a of state.all()) {
+    a.draw();
+  }
+
+  for (let i = 0; i < state.player.life; i++) {
+    screen.blit("life", [6 + (i * 32), HEIGHT - 26]);
+  }
+
+  screen.draw.text(state.score.toFixed(), {
+    bottomright: [WIDTH - 8, HEIGHT - 3],
+    fontname: "consola",
+    fontsize: 20
+  });
+
+  if (state.over()) {
+    screen.blit("dark", [0, 0]);
+    screen.draw.text("GAME OVER", {
+      center: [WIDTH / 2, HEIGHT / 2],
+      fontname: "consola",
+      fontsize: 100
+    });
+  }
+}
+
+window.addEventListener('load', (event) => {
+  screen.init();
+});
+</script>
+</body>
+
+</html>
